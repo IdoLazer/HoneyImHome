@@ -11,8 +11,8 @@ import com.google.gson.Gson
 class LocationTracker(val context: Context) {
 
     companion object {
-        val LOCATION_UPDATE_ACTION = "location updated"
-        val LOCATION_INFO_EXTRA = "location"
+        const val LOCATION_UPDATE_ACTION = "location updated"
+        const val LOCATION_INFO_EXTRA = "location"
     }
 
     var tracking = false
