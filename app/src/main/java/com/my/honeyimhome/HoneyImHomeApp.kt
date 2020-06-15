@@ -15,8 +15,6 @@ class HoneyImHomeApp() : Application() {
         super.onCreate()
         val receiver = LocalSendSmsBroadcastReciever()
         registerReceiver(receiver, IntentFilter(ACTION_SEND_SMS))
-        getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE).edit()
-            .putString(CURRENT_LOCATION, Gson().toJson(LocationInfo(0.0, 0.0, 1.0f))).apply()
     }
 
     fun sendSMS(sms: String, message: String) {
