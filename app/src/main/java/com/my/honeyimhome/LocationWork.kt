@@ -11,6 +11,10 @@ import androidx.work.impl.utils.futures.SettableFuture
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.gson.Gson
 
+const val CURRENT_LOCATION = "currentLocation"
+const val PREVIOUS_LOCATION = "previousLocation"
+const val WORK_NAME = "LocationWork"
+
 class LocationWork(appContext: Context, workerParams: WorkerParameters) :
     ListenableWorker(appContext, workerParams) {
     private var callback: CallbackToFutureAdapter.Completer<Result>? = null
@@ -106,7 +110,7 @@ class LocationWork(appContext: Context, workerParams: WorkerParameters) :
             if (previousLocation.distanceFrom(currentLocation) > 50
                 && currentLocation.distanceFrom(homeLocation!!) <= 50
             ) {
-                app!!.sendSMS(sp!!.getString(PHONE_NUM_KEY, null)!!)
+                app!!.sendSMS(sp!!.getString(SMS_PHONE_NUM, null)!!, "Honey I'm Home!")
             }
         }
 

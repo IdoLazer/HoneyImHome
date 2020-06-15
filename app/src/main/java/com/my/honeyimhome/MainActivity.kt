@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.isVisible
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import com.google.gson.Gson
@@ -23,15 +24,11 @@ import java.util.concurrent.TimeUnit
 const val REQUEST_CODE_PERMISSION_LOCATION = 1234
 const val REQUEST_CODE_PERMISSION_SMS = 1235
 const val SHARED_PREFERENCES_NAME = "HoneyImHome"
-const val CURRENT_LOCATION = "currentLocation"
-const val PREVIOUS_LOCATION = "previousLocation"
 const val CURRENTLY_TRACKING = "currentlyTracking"
 const val HAS_HOME_LOCATION = "hasHomeLocation"
 const val HOME_LOCATION = "homeLocation"
 const val HAS_SMS_PHONE_NUM = "hasSendSMSPhoneNum"
 const val SMS_PHONE_NUM = "sendSMSPhoneNum"
-
-const val TAG = "locationTag"
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,17 +46,7 @@ class MainActivity : AppCompatActivity() {
                     intent.getStringExtra(LocationTracker.LOCATION_INFO_EXTRA),
                     LocationInfo::class.java
                 )
-            if (sp.getString(CURRENT_LOCATION, null) != null) {
-                sp.edit().putString(PREVIOUS_LOCATION, sp.getString(CURRENT_LOCATION, null)).apply()
-            }
-            sp.edit().putString(
-                CURRENT_LOCATION,
-                intent.getStringExtra(LocationTracker.LOCATION_INFO_EXTRA)
-            ).apply()
-
-            if (location.accuracy!! < 50) {
-                setHomeBtn.isVisible = true;
-            }
+            setHomeBtn.isVisible = location.accuracy!! < 50
             latitudeText.text = "Latitude: ${location.latitude}"
             longitudeText.text = "Longitude: ${location.longitude}"
             accuracyText.text = "Accuracy: ${location.accuracy}m"
@@ -115,7 +102,10 @@ class MainActivity : AppCompatActivity() {
         testSMSBtn.setOnClickListener(View.OnClickListener { _ ->
             if (checkSMSPermission() && sp.getBoolean(HAS_SMS_PHONE_NUM, false)) {
                 val app = application as HoneyImHomeApp
-                app.sendSMS(sp.getString(SMS_PHONE_NUM, null)!!)
+                app.sendSMS(
+                    sp.getString(SMS_PHONE_NUM, null)!!,
+                    "Honey I'm Sending a Test Message!"
+                )
             }
         })
         trackingBtn.setOnClickListener(View.OnClickListener { _ ->
@@ -233,24 +223,18 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun startTracking() {
-        if (sp.getBoolean(CURRENTLY_TRACKING, false) &&
-            sp.getString(CURRENT_LOCATION, null) != null
-        ) {
-            var location = gson.fromJson<LocationInfo>(
-                sp.getString(CURRENT_LOCATION, null),
-                LocationInfo::class.java
-            )
-            latitudeText.text = "Latitude: ${location.latitude}"
-            longitudeText.text = "Longitude: ${location.longitude}"
-            accuracyText.text = "Accuracy: ${location.accuracy}m"
-        } else {
+        if (!sp.getBoolean(CURRENTLY_TRACKING, false)) {
             sp.edit().putBoolean(CURRENTLY_TRACKING, true).apply()
             val locationWork =
                 PeriodicWorkRequest.Builder(LocationWork::class.java, 15, TimeUnit.MINUTES)
-                    .addTag(TAG)
                     .setConstraints(Constraints.NONE)
                     .build()
-            WorkManager.getInstance(this).enqueue(locationWork)
+            WorkManager.getInstance(this)
+                .enqueueUniquePeriodicWork(
+                    WORK_NAME,
+                    ExistingPeriodicWorkPolicy.REPLACE,
+                    locationWork
+                )
         }
 
         locationTracker.startTracking()
@@ -280,7 +264,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopTracking() {
         sp.edit().putBoolean(CURRENTLY_TRACKING, false).apply()
-        WorkManager.getInstance(this).cancelAllWorkByTag(TAG)
+        WorkManager.getInstance(this).cancelUniqueWork(WORK_NAME)
         locationTracker.stopTracking()
         latitudeText.isVisible = false
         longitudeText.isVisible = false
